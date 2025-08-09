@@ -16,6 +16,9 @@ import Verify from "./pages/Verify";
 import UniqueNumber from "./pages/UniqueNumber";
 import Chats from "./pages/Chats";
 import NewChat from "./pages/NewChat";
+import Chat from "./pages/Chat";
+import Settings from "./pages/Settings";
+import AIAssistant from "./pages/AIAssistant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +76,9 @@ const AppRoutes = () => {
       <Route path="/unique-number" element={<ProtectedRoute><UniqueNumber /></ProtectedRoute>} />
       <Route path="/chats" element={<ProtectedRoute><Chats /></ProtectedRoute>} />
       <Route path="/new-chat" element={<ProtectedRoute><NewChat /></ProtectedRoute>} />
+      <Route path="/chat/:id" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistant /></ProtectedRoute>} />
       
       {/* Root redirect */}
       <Route path="/" element={<Navigate to="/welcome" replace />} />
