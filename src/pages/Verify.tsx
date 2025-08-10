@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { signOut } from '@/lib/auth';
+import { supabase } from '@/integrations/supabase/client';
 
 const Verify = () => {
   const navigate = useNavigate();
@@ -25,10 +26,24 @@ const Verify = () => {
   const isNewUser = location.state?.isNewUser || false;
 
   useEffect(() => {
-    // If user is confirmed, redirect to unique number page
-    if (user && session && user.email_confirmed_at) {
-      navigate('/unique-number');
-    }
+    // Auto-check for confirmation status every 2 seconds
+    const checkConfirmation = async () => {
+      if (user && session) {
+        // Refresh session to get latest user data
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        if (newSession && newSession.user.email_confirmed_at) {
+          navigate('/unique-number');
+        }
+      }
+    };
+
+    // Check immediately
+    checkConfirmation();
+
+    // Set up interval to check every 2 seconds
+    const interval = setInterval(checkConfirmation, 2000);
+
+    return () => clearInterval(interval);
   }, [user, session, navigate]);
 
   const handleLogout = async () => {

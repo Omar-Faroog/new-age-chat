@@ -123,6 +123,14 @@ const Chat = () => {
         }
 
         setMessages(data || []);
+        
+        // Mark messages as read
+        await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('conversation_id', id)
+          .neq('sender_id', user?.id);
+          
       } catch (error) {
         console.error('Error:', error);
       } finally {
@@ -132,6 +140,69 @@ const Chat = () => {
 
     fetchConversation();
     fetchMessages();
+
+    // Set up real-time subscription for new messages
+    const messagesSubscription = supabase
+      .channel(`messages:${id}`)
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `conversation_id=eq.${id}`
+        }, 
+        (payload) => {
+          const newMessage = payload.new as Message;
+          setMessages(prev => [...prev, newMessage]);
+          
+          // Mark as read if it's not from current user
+          if (newMessage.sender_id !== user?.id) {
+            supabase
+              .from('messages')
+              .update({ is_read: true })
+              .eq('id', newMessage.id)
+              .then(() => {
+                // Update local state
+                setMessages(prev => 
+                  prev.map(msg => 
+                    msg.id === newMessage.id 
+                      ? { ...msg, is_read: true }
+                      : msg
+                  )
+                );
+              });
+          }
+        }
+      )
+      .subscribe();
+
+    // Set up real-time subscription for message read status updates
+    const readStatusSubscription = supabase
+      .channel(`read_status:${id}`)
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public', 
+          table: 'messages',
+          filter: `conversation_id=eq.${id}`
+        },
+        (payload) => {
+          const updatedMessage = payload.new as Message;
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === updatedMessage.id 
+                ? { ...msg, is_read: updatedMessage.is_read }
+                : msg
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesSubscription);
+      supabase.removeChannel(readStatusSubscription);
+    };
   }, [user, id]);
 
   const handleSendMessage = async () => {
@@ -167,15 +238,6 @@ const Chat = () => {
         .eq('id', id);
 
       setNewMessage('');
-      
-      // Refresh messages
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', id)
-        .order('created_at', { ascending: true });
-
-      setMessages(data || []);
     } catch (error) {
       console.error('Error sending message:', error);
     }

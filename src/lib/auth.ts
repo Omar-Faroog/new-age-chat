@@ -21,6 +21,20 @@ export const signUp = async (email: string, password: string) => {
   return { data, error };
 };
 
+export const resendConfirmation = async (email: string) => {
+  const redirectUrl = `${window.location.origin}/verify`;
+  
+  const { data, error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: redirectUrl
+    }
+  });
+  
+  return { data, error };
+};
+
 export const signIn = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,

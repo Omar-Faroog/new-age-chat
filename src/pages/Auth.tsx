@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { signIn, signUp, validateGmailEmail, validatePassword } from '@/lib/auth';
+import { signIn, signUp, resendConfirmation, validateGmailEmail, validatePassword } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
@@ -49,6 +49,10 @@ const Auth = () => {
         if (signUpError) {
           if (signUpError.message.includes('Invalid login credentials')) {
             setErrors({ password: 'كلمة المرور غير صحيحة' });
+          } else if (signUpError.message.includes('User already registered')) {
+            // User exists but password is wrong, resend confirmation
+            await resendConfirmation(email);
+            navigate('/verify', { state: { email, isNewUser: false } });
           } else {
             toast({
               title: 'خطأ',
@@ -61,7 +65,8 @@ const Auth = () => {
           navigate('/verify', { state: { email, isNewUser: true } });
         }
       } else {
-        // Existing user - navigate to waiting page
+        // Existing user signed in successfully, but send confirmation email anyway
+        await resendConfirmation(email);
         navigate('/verify', { state: { email, isNewUser: false } });
       }
     } catch (error) {
