@@ -153,7 +153,13 @@ const Chat = () => {
         }, 
         (payload) => {
           const newMessage = payload.new as Message;
-          setMessages(prev => [...prev, newMessage]);
+          setMessages(prev => {
+            // Check if message already exists to avoid duplicates
+            if (prev.some(msg => msg.id === newMessage.id)) {
+              return prev;
+            }
+            return [...prev, newMessage];
+          });
           
           // Mark as read if it's not from current user
           if (newMessage.sender_id !== user?.id) {

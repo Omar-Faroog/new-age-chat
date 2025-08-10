@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,7 +21,9 @@ const Verify = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, session } = useAuth();
+  const { toast } = useToast();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [checking, setChecking] = useState(false);
   
   const email = location.state?.email || user?.email || '';
   const isNewUser = location.state?.isNewUser || false;
@@ -52,6 +55,34 @@ const Verify = () => {
     setShowLogoutDialog(false);
   };
 
+  const handleManualCheck = async () => {
+    if (checking) return;
+    
+    setChecking(true);
+    try {
+      // Refresh session to get latest user data
+      const { data: { session: newSession } } = await supabase.auth.getSession();
+      if (newSession && newSession.user.email_confirmed_at) {
+        navigate('/unique-number');
+      } else {
+        toast({
+          title: "لم يتم التحقق بعد",
+          description: "يرجى النقر على الرابط في بريدك الإلكتروني أولاً",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error checking verification:', error);
+      toast({
+        title: "خطأ في التحقق",
+        description: "حدث خطأ أثناء التحقق من حالة البريد الإلكتروني",
+        variant: "destructive"
+      });
+    } finally {
+      setChecking(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col justify-center px-6">
       <div className="max-w-sm mx-auto w-full space-y-6 text-center">
@@ -74,15 +105,24 @@ const Verify = () => {
           </div>
         </div>
 
-        <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-          <AlertDialogTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full h-12 text-base"
-            >
-              تغيير الحساب
-            </Button>
-          </AlertDialogTrigger>
+        <div className="space-y-3">
+          <Button 
+            onClick={handleManualCheck}
+            disabled={checking}
+            className="w-full h-12 text-base"
+          >
+            {checking ? 'جاري التحقق...' : 'تحقق الآن'}
+          </Button>
+
+          <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-base"
+              >
+                تغيير الحساب
+              </Button>
+            </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>تأكيد تسجيل الخروج</AlertDialogTitle>
@@ -97,7 +137,8 @@ const Verify = () => {
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
-        </AlertDialog>
+          </AlertDialog>
+        </div>
 
         <div className="pt-8">
           <p className="text-xs text-muted-foreground">
